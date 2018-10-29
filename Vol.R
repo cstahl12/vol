@@ -61,13 +61,13 @@ date_strike <- "2018-12-18"
 days_sim <- 32
 num_sim <- 100000
 
-df_price <- run_sim("XOM", date_from, date_to, days_sim, num_sim)
+df_price <- run_sim("QQQ", date_from, date_to, days_sim, num_sim)
 
-c <- (sum(as.numeric(df_price$Price > 81.5)) / num_sim)
-c*.5
+c <- (sum(as.numeric(df_price$Price > 175)) / num_sim)
+c * 0.5
 
-p <- sum(as.numeric(df_price$Price < 160)) / num_sim
-p*.5
+p <- sum(as.numeric(df_price$Price < 24.5)) / num_sim
+p*0.5
 
 # ggplot(data = df_price) +
 # geom_histogram(aes(x = `Price`), bins = 100)
