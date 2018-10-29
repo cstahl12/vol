@@ -4,74 +4,72 @@ library(purrr)
 library(dplyr)
 library(tidyr)
 library(lubridate)
-library(rugarch)
 library(FatTailsR)
+library(PerformanceAnalytics)
 
-# Sys.setenv(http_proxy="http://stahlc:@172.21.3.201:8080/") 
-# Sys.setenv(https_proxy="http://stahlc:@172.21.3.201:8080/")  
+simulate_prices <- function(kfit, days_sim, num_sim, start_price){
+  
+  for(i in c(1 : days_sim)) {
+    
+    kfat <- rkiener4(num_sim, m = 0, g = kfit$coefk4[2], k = kfit$coefk4[3], e = kfit$coefk4[4])
+    
+    if(i == 1){
+      df_sim <- data.frame(kfat)
+    }else{
+      df_sim <- cbind(df_sim, data.frame(kfat))
+    }
+  }
+  
+  df_sim <- data.frame(t(df_sim))
+  
+  df_price <- df_sim %>%
+    apply(2, Return.cumulative) %>%
+    data.frame() %>%
+    mutate(`Price` = start_price * (1 + `.`))
+  
+  colnames(df_price) <- c("CReturn", "Price")
+  
+  return(df_price)
+}
+
+run_sim <- function(symbol, date_from, date_to, days_sim, num_sim){
+  prices <- tq_get(symbol,
+                   get = "stock.prices",
+                   from = date_from,
+                   to = date_to)
+  
+  rets <- prices %>%
+    tq_transmute(select = adjusted, 
+                 mutate_fun = periodReturn, 
+                 period = "daily", 
+                 col_rename = "ret")
+  
+  start_price <- as.numeric(prices$adjusted[nrow(prices)])
+  
+  kfit <- regkienerLX(rets$ret, model = "K4")
+  
+  df_price <- simulate_prices(kfit, days_sim, num_sim, start_price)
+  
+  df_price$Symbol <- symbol
+  
+  return(df_price)
+}
 
 date_from <- "2005-07-01"
-date_to <- "2018-10-22"
-date_strike <- "2018-11-24"
+date_to <- "2018-10-26"
+date_strike <- "2018-12-18"
+days_sim <- 32
+num_sim <- 100000
 
-prices <- tq_get("SBUX",
-                 get = "stock.prices",
-                 from = date_from,
-                 to = date_to)
+df_price <- run_sim("XOM", date_from, date_to, days_sim, num_sim)
 
-rets <- prices %>%
-  tq_transmute(select = adjusted, 
-               mutate_fun = periodReturn, 
-               period = "daily", 
-               col_rename = "ret")
+c <- (sum(as.numeric(df_price$Price > 81.5)) / num_sim)
+c*.5
 
-start_price <- as.numeric(prices$adjusted[nrow(prices)])
+p <- sum(as.numeric(df_price$Price < 160)) / num_sim
+p*.5
 
-
-days_sim <- round(as.numeric(difftime(date_strike, date_to, units = "days")))
-num_sim <- 10000
-
-spec <- ugarchspec(mean.model = list(armaOrder=c(0, 0)), distribution = "std")
-fit <- ugarchfit(spec, rets$ret)
-
-coef(fit)
-
-plot(sqrt(252) * fit@fit$sigma, type='l')
-
-sim <- ugarchsim(fit, n.sim = days_sim, n.start = 1, m.sim = num_sim, startMethod = "sample")
-
-df_sim <- data.frame(t(sigma(sim)))
-
-get_returns <- function(d){
-  rnorm(length(d), mean = 0, sd = d)
-}
-  
-df_rets <- df_sim %>%
-  apply(2, get_returns) %>%
-  data.frame
-
-df_csum <- df_rets %>%
-  apply(1, cumsum) %>%
-  data.frame
-
-all_ret <- unlist(df_rets)
-
-gauss <- rnorm(10000, mean = 0, sd = sd(rets$ret))
-
-kfit <- regkienerLX(rets$ret, model = "K4")
-kfit$coefk4[1]
-
-kfat <- rkiener4(10000, m = 0, g = kfit$coefk4[2], k = kfit$coefk4[3], e = kfit$coefk4[4])
-
-ggplot() +
-  geom_density(aes(x = all_ret), colour = "red") +
-  geom_density(aes(x = rets$ret)) +
-  geom_density(aes(x = gauss), colour = "green") +
-  geom_density(aes(x = kfat), colour = "blue") +
-  xlim (-.15, .15)
-
-
-
-
+# ggplot(data = df_price) +
+# geom_histogram(aes(x = `Price`), bins = 100)
 
 
