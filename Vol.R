@@ -55,16 +55,16 @@ run_sim <- function(symbol, date_from, date_to, days_sim, num_sim){
   return(df_price)
 }
 
-date_from <- "2005-07-01"
+date_from <- "2003-07-01"
 date_to <- "2018-10-26"
 date_strike <- "2018-12-18"
-days_sim <- 32
+days_sim <- 37
 num_sim <- 100000
 
-df_price <- run_sim("QQQ", date_from, date_to, days_sim, num_sim)
+df_price <- run_sim("MSFT", date_from, date_to, days_sim, num_sim)
 
-c <- (sum(as.numeric(df_price$Price > 175)) / num_sim)
-c * 0.5
+c <- (sum(as.numeric(df_price$Price > 118)) / num_sim)
+c * 1
 
 p <- sum(as.numeric(df_price$Price < 24.5)) / num_sim
 p*0.5
