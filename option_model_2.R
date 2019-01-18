@@ -9,45 +9,9 @@ library(stringr)
 library(plotly)
 library(ggthemes)
 
-cum_return <- function(x, p){
-  return(cumprod(x+1) * p)
-}
-
-simulate_prices <- function(rets, days_sim, num_sim, start_price, n = FALSE){
-  
-  vol = sd(rets$ret, na.rm = TRUE)
-  print(paste0("Vol: ", sqrt(252)*vol))
-  
-  for(i in c(1 : days_sim)) {
-    
-    if(n){
-      dist <- rnorm(num_sim, mean = 0, sd = vol)
-    }else{
-      
-    }
-    
-    if(i == 1){
-      df_sim <- data.frame(dist)
-    }else{
-      df_sim <- cbind(df_sim, data.frame(dist))
-    }
-  }
-  
-  df_price <- df_sim %>%
-    t() %>%
-    as.data.frame() %>%
-    apply(2, cum_return, p = start_price) %>%
-    t() %>%
-    as.data.frame()
-  
-  df_flat <- data.frame("Price" = unlist(df_price[, days_sim]))
-  
-  return(df_flat)
-}
-
 av_api_key("VOJYOHWHDXCGOTWQ")
 date_from <- "2000-07-01"
-date_price <- "2019-01-17"
+date_price <- "2019-01-18"
 date_strike <- "2019-02-15"
 
 date_arr <- weekdays(seq(as.Date(date_price),
@@ -60,9 +24,10 @@ days <- data.frame("Day" = date_arr) %>%
 
 days_sim <- length(days$Day)
 
-ticker_symbol <- "SMH"
-start_price <- 82
+ticker_symbol <- "IWM"
+start_price <- 147.85
 num_sim <- 100000
+div <- 0
 
 prices <- tq_get(ticker_symbol,
                  get = "alphavantager",
@@ -77,23 +42,23 @@ rets <- prices %>%
 
 kfit <- regkienerLX(rets$return)
 dist <- data.frame("return" = rkiener4(num_sim, m = 0, g = kfit$coefk4[2], k = kfit$coefk4[3], e = kfit$coefk4[4])) %>%
-  mutate(`price` = start_price * (1 + `return`))
+  mutate(`price` = (start_price * (1 + `return`)) - div)
 
 quantiles <- c(.25, .75)
 q <- quantile(dist$price, quantiles)
 
-ggplot(data = dist) +
-  geom_histogram(aes(x = `price`), bins = 100)
+# ggplot(data = dist) +
+#   geom_histogram(aes(x = `price`), bins = 100)
 
 d = 1.0
 cs <- as.numeric(round(q[2]))
 ps <- as.numeric(round(q[1]))
 
-c <- (sum(as.numeric(df_k$Price > cs)) / num_sim)
+c <- (sum(as.numeric(dist$price > cs)) / num_sim)
 cs
 c * d
 
-p <- (sum(as.numeric(df_k$Price < ps)) / num_sim)
+p <- (sum(as.numeric(dist$price < ps)) / num_sim)
 ps
 p * d
 
